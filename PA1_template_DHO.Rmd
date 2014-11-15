@@ -1,0 +1,171 @@
+---
+title: 'Reproducible Research: Peer Assessment 1'
+author: "Daan Hoevers"
+date: "Saturday, November 15, 2014"
+output: html_document
+keep_md: yes
+---
+
+
+### 1. Loading and preprocessing the data
+
+The data is loaded. Since it already has column headers it is considered as ready for processing.
+
+```{r, echo = TRUE}
+data <- read.csv("activity.csv", header = TRUE)
+```
+
+### 2. What is mean total number of steps taken per day?
+
+* 2.1 Make a histogram of the total number of steps taken each day
+
+First an aggregated data set is created with the total sum of steps per date.
+```{r, echo = TRUE}
+agg_data_tot <- aggregate(data$steps, by = list(data$date), FUN = sum)
+colnames(agg_data_tot) <- c("Date", "Total_Steps")
+head(agg_data_tot, 5)
+```
+
+Using this aggregated data set, a histogram is created
+```{r, echo = TRUE}
+library(ggplot2)
+g <- ggplot(agg_data_tot, aes(x = Total_Steps))
+g <- g + geom_histogram(binwidth = 2500, colour = "black", fill = "blue")
+g
+```
+
+* 2.2 Calculate and report the mean and median total number of steps taken per day
+
+The aggregated data set is used to calculated the mean and median. NA values are omitted by the 'na.rm = TRUE' condition
+```{r, echo = TRUE}
+options(digits = 9)
+mean(agg_data_tot$Total_Steps, na.rm=TRUE)
+median(agg_data_tot$Total_Steps, na.rm=TRUE)
+```
+
+### 3. What is the average daily activity pattern?
+
+* 3.1 Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+First an aggregated data set with the average number of steps per interval is created.
+```{r, echo = TRUE}
+mean_rm <- function (x) {mean(x, na.rm = TRUE)} ## function created to include na.rm = TRUE condition in the aggregate function
+
+agg_data_avg <- aggregate(data$steps, 
+                          by = list(data$interval)
+                          , FUN = mean_rm)     
+colnames(agg_data_avg) <- c("Interval", "Avg_Steps")
+head(agg_data_avg, 5)
+``` 
+
+The aggregated data set is used to make the times series plot of the 5-minute interval and the average number of steps, averaged accross all days
+```{r, echo = TRUE}
+library(ggplot2)
+g <- ggplot(agg_data_avg, aes(x = Interval, y = Avg_Steps))
+g <- g + geom_line()
+g
+```
+
+* 3.2 Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r, echo = TRUE}
+agg_data_avg[which.max(agg_data_avg$Avg_Steps),]
+```
+
+### 4. Imputing missing values
+
+* 4.1 Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r, echo = TRUE}
+sum(is.na(data$steps))
+```
+
+* 4.2 Devise Missing Data Strategy
+
+It is decided to replace the missing values (NAs) with the mean of the interval. This concept is based on the on section 25.3 Mean imputation from *Data Analyis Using Regression and Multilevel/Hierarchal Models* by Gelmand and Hill: http://www.stat.columbia.edu/~gelman/arm/missing.pdf  
+
+It is chosen to use the interval mean because this is considered the most appropriate value to replace the missing values.
+
+* 4.3 Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+A for statement is used to replace the NA value with the mean value of the related interval.
+```{r, echo = TRUE}
+subdata <- data
+count = 0
+for (i in 1:length(data$steps)){
+       if(is.na(data[i,]$steps)){
+              subdata[i,]$steps <- 
+                      agg_data_avg[agg_data_avg$Interval 
+                                   == data[i,]$interval, 2]  
+              count = count + 1
+        }
+        
+}
+cat("Total", count, "NA values were filled.\n")
+```
+
+4.4 Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r, echo = TRUE}
+agg_subdata_tot <- aggregate(subdata$steps, 
+                             by = list(subdata$date)
+                             , FUN = sum)
+colnames(agg_subdata_tot) <- c("Date", "Total_Steps")
+```
+
+```{r, echo = TRUE}
+g <- ggplot(agg_subdata_tot, aes(x = Total_Steps))
+g <- g + geom_histogram(binwidth = 2500, colour = "black", fill = "blue")
+g
+```
+
+As can be seen in below table, the mean of the total number of steps taken per day does not change having the missing values replaced by the mean of the interval.However, the median is now equal to the mean. 
+
+```{r, echo = TRUE, results = 'asis'}
+library(xtable)
+options(digits = 9)
+first <- c(mean(agg_data_tot$Total_Steps, na.rm=TRUE)
+        , median(agg_data_tot$Total_Steps, na.rm=TRUE))
+new <- c(mean(agg_subdata_tot$Total_Steps)
+        , median(agg_subdata_tot$Total_Steps))
+tbl <- xtable(rbind(first, new))
+colnames(tbl) <- c("Mean", "Median")
+print(tbl, type = "html")
+```
+
+### 5. Are there differences in activity patterns between weekdays and weekends?
+
+* 5.1 Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+A for statement is used to create a vector of Weekend- and Week days which is subsequentely added to the existing data set
+
+```{r, echo = TRUE}
+days <- weekdays(as.Date(subdata$date, format = "%Y-%m-%d"))
+
+for (i in 1:length(days)){
+        if((days[i] == "Saturday") | (days[i] == "Sunday")){
+                days[i] <- "Weekend"}
+        else{
+                days[i] <- "Weekday"
+        }
+}
+days <- as.factor(days)
+subdata <- cbind(subdata, days)
+```
+
+* 5.2 Make a panel plot containing a time series plot (i.e. type = "l")  of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+
+First the data is aggregated to the average number of steps per weekend or week days and next the interval.
+
+```{r, echo = TRUE}
+agg_subdata_avg <- aggregate(subdata$steps, 
+                          by = list(subdata$days, subdata$interval)
+                          , FUN = mean)
+colnames(agg_subdata_avg) <- c("Days", "Interval", "Avg_Steps")
+```
+
+The aggregated data is used to plot the times series using ggplot2. The facet is created using the days aggregation.
+```{r, echo = TRUE, fig.width=6, fig.height = 6}
+library(lattice)
+xyplot(Avg_Steps ~ Interval | Days, groups = Days, data = agg_subdata_avg, type = "l", layout = (c(1,2)))
+```
+
+
