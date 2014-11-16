@@ -36,7 +36,7 @@ g
 
 * 2.2 Calculate and report the mean and median total number of steps taken per day
 
-The aggregated data set is used to calculated the mean and median. NA values are omitted by the 'na.rm = TRUE' condition
+The aggregated data set is used to calculated the mean and median. NA values are omitted by the `na.rm = TRUE` condition
 ```{r, echo = TRUE}
 options(digits = 9)
 mean(agg_data_tot$Total_Steps, na.rm=TRUE)
@@ -138,6 +138,7 @@ print(tbl, type = "html")
 A for statement is used to create a vector of Weekend- and Week days which is subsequentely added to the existing data set
 
 ```{r, echo = TRUE}
+Sys.setlocale("LC_TIME","English")
 days <- weekdays(as.Date(subdata$date, format = "%Y-%m-%d"))
 
 for (i in 1:length(days)){
@@ -163,9 +164,8 @@ colnames(agg_subdata_avg) <- c("Days", "Interval", "Avg_Steps")
 ```
 
 The aggregated data is used to plot the times series using ggplot2. The facet is created using the days aggregation.
+
 ```{r, echo = TRUE, fig.width=6, fig.height = 6}
 library(lattice)
 xyplot(Avg_Steps ~ Interval | Days, groups = Days, data = agg_subdata_avg, type = "l", layout = (c(1,2)))
 ```
-
-
