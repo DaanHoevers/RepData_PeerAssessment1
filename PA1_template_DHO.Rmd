@@ -163,7 +163,7 @@ agg_subdata_avg <- aggregate(subdata$steps,
 colnames(agg_subdata_avg) <- c("Days", "Interval", "Avg_Steps")
 ```
 
-The aggregated data is used to plot the times series using ggplot2. The facet is created using the days aggregation.
+The aggregated data is used to plot the times series with 2 panels using the days aggregation.
 
 ```{r, echo = TRUE, fig.width=6, fig.height = 6}
 library(lattice)
